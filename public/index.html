@@ -23,7 +23,7 @@
   <div class="wrapper">
     <div class="col">
       <div class="sidebar-info">
-        <div class="sidebar-header" onclick="toggleSidebarInfo()">
+        <div class="sidebar-header" id="infoHeader" onclick="toggleSidebarInfo()">
           <span>ℹ️ Інформація (натисніть для розгортання/згортання)</span>
         </div>
         <div id="sidebarContent" class="sidebar-content collapsed">
@@ -37,9 +37,25 @@
           <p><b>Кнопка із 🔒</b> — для закріплення елементів</p>
         </div>
       </div>
-      <div class="drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="simpleNode">
-        <i class="simpleNode"></i><span>Перетягніть, щоб додати новий блок </span>
-      </div>
+      <div class="sidebar-subjects">
+        <div class="sidebar-header" id="subjectsHeader" onclick="toggleSubjectsList()">
+          <span>📚 Список предметів (натисніть для розгортання/згортання)</span>
+        </div>
+        <div id="subjectsList" class="sidebar-content collapsed">
+          <div class="drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="blank">
+            <i class="blank"></i><span>Пустий блок</span>
+          </div>
+          <div class="drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="programming">
+            <i class="programming"></i><span>Програмування</span>
+          </div>
+          <div class="drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="operation_sys">
+            <i class="operation_sys"></i><span>Операційні системи</span>
+          </div>
+          <div class="drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="math_analysis">
+            <i class="math_analysis"></i><span>Математичний аналіз</span>
+          </div>
+        </div>
+      </div>      
       <div class="wrapper-buttons">
       <button onclick="saveSchema()" class="btn-save-schema">Додати схему</button>
       <button onclick="startNewSchema()" class="btn-new-schema">Очистити редактор</button>
@@ -81,6 +97,7 @@
   <script>
 let drawflowEditor = null;
 let currentSchemaId = null;
+const createdNodeTypes = new Map(); // id → 'programming', 'operation_sys', ...
 
 window.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById("drawflow");
@@ -140,7 +157,7 @@ window.addEventListener('DOMContentLoaded', () => {
         loadSchemaFromServer(lastId); // цей виклик вже підсвітить кнопку
     }
 
-    // Прив’язка кнопки "Clear"
+    // Прив’язка кнопки "Видалити" до функції
     const clearBtn = document.querySelector('.btn-clear');
     if (clearBtn) {
         clearBtn.addEventListener('click', () => {
@@ -149,6 +166,25 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     document.querySelector('.btn-save-schema').disabled = false;
     document.querySelector('.btn-new-schema').disabled = true;
+
+    drawflowEditor.on('nodeRemoved', function (id) {
+    console.log('Видалено вузол з id:', id);
+    const nodeName = createdNodeTypes.get(Number(id));
+    console.log('Тип вузла:', nodeName);
+    console.log("Поточна мапа вузлів:", Array.from(createdNodeTypes.entries()));
+
+    if (!nodeName || nodeName === 'blank') return;
+
+    const sidebarItem = document.querySelector(`.drag-drawflow[data-node="${nodeName}"]`);
+    if (!sidebarItem) {
+        console.warn(`Не знайдено вузол у бічній панелі для типу: ${nodeName}`);
+        return;
+    }
+
+    sidebarItem.style.removeProperty('display');
+
+    createdNodeTypes.delete(id);
+});
 
     requestAnimationFrame(() => {
         initializeAllTextareas();
@@ -454,8 +490,22 @@ document.querySelector('.btn-clear').addEventListener('click', deleteCurrentSche
 
 function toggleSidebarInfo() {
   const content = document.getElementById('sidebarContent');
-  content.classList.toggle('expanded');
+  const header = document.getElementById('infoHeader');
+
+  const isExpanded = content.classList.toggle('expanded');
+  content.classList.toggle('collapsed', !isExpanded);
+  header.classList.toggle('active', isExpanded);
 }
+
+function toggleSubjectsList() {
+  const list = document.getElementById('subjectsList');
+  const header = document.getElementById('subjectsHeader');
+
+  const isExpanded = list.classList.toggle('expanded');
+  list.classList.toggle('collapsed', !isExpanded);
+  header.classList.toggle('active', isExpanded);
+}
+
     /* DRAG EVENT */
 
     /* Mouse and Touch Actions */
@@ -516,21 +566,125 @@ function addNodeToDrawFlow(name, pos_x, pos_y) {
     let nodeId = null;
 
     switch (name) {
-        case 'simpleNode':
+        case 'blank':
             nodeId = drawflowEditor.addNode(
-                'simple',
+                'blank',
                 1,
                 1,
                 pos_x,
                 pos_y,
-                'simple',
-                { "text": "Введіть назву дисципліни" },
+                'blank',
+                { "text": "",
+                  "course": "",
+                  "credits": ""
+                 },
                 `<div>
                     <div class="title-box">
                         <textarea df-name placeholder="Введіть назву дисципліни"></textarea>
+                        <div class="df-field">
+                        <label>Курс:</label>
+                        <input type="text" value="" />
+                        </div>
+                        <div class="df-field">
+                        <label>Кредити:</label>
+                        <input type="text" value="" />
+                        </div>
                     </div>
                 </div>`
             );
+            break;
+        case 'programming':
+        const defaultDiscipline = "Програмування";
+        const defaultCourse = "1";
+        const defaultCredits = "10";
+            nodeId = drawflowEditor.addNode(
+                'prog',
+                1,
+                1,
+                pos_x,
+                pos_y,
+                'prog',
+                { "text": defaultDiscipline,
+                  "course": defaultCourse,
+                  "credits": defaultCredits
+                },
+                `<div>
+                    <div class="title-box">
+                        <textarea df-name placeholder="Введіть назву дисципліни" readonly>${defaultDiscipline}</textarea>
+                        <div class="df-field">
+                        <label>Курс:</label>
+                        <input type="text" value="${defaultCourse}" readonly />
+                        </div>
+                        <div class="df-field">
+                        <label>Кредити:</label>
+                        <input type="text" value="${defaultCredits}" readonly />
+                        </div>
+                    </div>
+                </div>`
+            );
+            createdNodeTypes.set(Number(nodeId), 'programming');
+            break;
+            case 'operation_sys':
+            const defaultDiscipline_1 = "Операційні системи";
+            const defaultCourse_1 = "1";
+            const defaultCredits_1 = "5";
+            nodeId = drawflowEditor.addNode(
+                'sys',
+                1,
+                1,
+                pos_x,
+                pos_y,
+                'sys',
+                { "text": defaultDiscipline_1,
+                  "course": defaultCourse_1,
+                  "credits": defaultCredits_1
+                },
+                `<div>
+                    <div class="title-box">
+                        <textarea df-name placeholder="Введіть назву дисципліни" readonly>${defaultDiscipline_1}</textarea>
+                        <div class="df-field">
+                        <label>Курс:</label>
+                        <input type="text" value="${defaultCourse_1}" readonly />
+                        </div>
+                        <div class="df-field">
+                        <label>Кредити:</label>
+                        <input type="text" value="${defaultCredits_1}" readonly />
+                        </div>
+                    </div>
+                </div>`
+            );
+            createdNodeTypes.set(Number(nodeId), 'operation_sys');
+            break;
+            case 'math_analysis':
+            const defaultDiscipline_2 = "Математичний аналіз";
+            const defaultCourse_2 = "1";
+            const defaultCredits_2 = "5";
+            nodeId = drawflowEditor.addNode(
+                'math_an',
+                1,
+                1,
+                pos_x,
+                pos_y,
+                'math_an',
+                { "text": defaultDiscipline_2,
+                  "course": defaultCourse_2,
+                  "credits": defaultCredits_2
+                },
+                `<div>
+                    <div class="title-box">
+                        <textarea df-name placeholder="Введіть назву дисципліни" readonly>${defaultDiscipline_2}</textarea>
+                        <div class="df-field">
+                        <label>Курс:</label>
+                        <input type="text" value="${defaultCourse_2}" readonly />
+                        </div>
+                        <div class="df-field">
+                        <label>Кредити:</label>
+                        <input type="text" value="${defaultCredits_2}" readonly />
+                        </div>
+                    </div>
+                </div>`
+            );
+            createdNodeTypes.set(Number(nodeId), 'math_analysis');
 
             // Затримка, щоб textarea з'явилася в DOM
             requestAnimationFrame(() => {
@@ -539,6 +693,7 @@ function addNodeToDrawFlow(name, pos_x, pos_y) {
                     textarea.style.overflow = 'hidden';
                     textarea.style.resize = 'none';
                     textarea.rows = 1;
+                    textarea.style.cursor = 'default';
 
                     // Одразу встановлюємо висоту
                     autoResizeTextarea(textarea);
@@ -549,14 +704,19 @@ function addNodeToDrawFlow(name, pos_x, pos_y) {
                     });
                 }
             });
-
             break;
 
         default:
             console.warn("Невідомий тип вузла:", name);
             return false;
+          }
+        // Приховуємо вузол на бічній панелі (окрім blank)
+        if (name !== 'blank') {
+        const sidebarItem = document.querySelector(`.drag-drawflow[data-node="${name}"]`);
+        if (sidebarItem) {
+            sidebarItem.style.display = 'none';
+        }
     }
-
     autoUpdateSchema();
 }
 

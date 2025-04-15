@@ -59,11 +59,15 @@ header a {
 }
 
 .drag-drawflow {
-  line-height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 50px;
   border-bottom: 1px solid var(--border-color);
   cursor: move;
   user-select: none;
-  text-align: center; 
+  text-align: center;
 }
 
 .sidebar-info {
@@ -72,12 +76,19 @@ header a {
 }
 
 .sidebar-header {
-  background-color: #ddd;
+  background-color: #f5f5f5;
   padding: 10px;
   font-weight: bold;
   cursor: pointer;
-  border-bottom: 1px solid #ccc;
+  border-bottom: 1px solid #ddd;
   text-align: center;
+  transition: background-color 0.3s ease, border-left 0.3s ease;
+}
+
+.sidebar-header.active {
+  background-color: #e0f0ff;
+  border-left: 4px solid #3399ff;
+  font-weight: bold;
 }
 
 .sidebar-content {
@@ -86,7 +97,7 @@ header a {
   line-height: 1.4;
   overflow: hidden;
   max-height: 0;
-  transition: max-height 0.4s ease;
+  transition: max-height 0.3s ease, padding 0.3s ease;
 }
 
 .sidebar-content.expanded {
@@ -412,24 +423,6 @@ cursor: pointer;
   z-index: 2 !important;
 }
 
-.drawflow-node textarea[df-name] {
-  width: 100%; /* Заповнює контейнер */
-  min-height: 50px; /* Мінімальна висота */
-  height: 50px; /* Початкова висота */
-  max-height: 200px; /* Максимальна висота */
-  overflow-y: hidden; /* Ховаємо вертикальний скрол */
-  resize: none; /* Вимикаємо ручне змінення розміру */
-  padding: 3px; /* Зменшений внутрішній відступ */
-  font-size: 16px; /* Зменшений розмір шрифту */
-  font-family: Arial, sans-serif; /* Встановлений новий шрифт */
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  text-align: center; /* Центрування тексту */
-  word-break: break-word;
-  white-space: pre-wrap; /* Зберігає пробіли та переносить текст */
-  line-height: 1.1; /* Зменшений міжрядковий інтервал */
-}
-
 .drawflow .drawflow-node.selected  {
   background: white !important;
   border: 3px solid #4e51ff !important;
@@ -506,9 +499,70 @@ cursor: pointer;
   padding: 25px;
   text-align: center;
   word-wrap: break-word;
+  
+  /* Додано для вертикального розташування */
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 8px; /* Відстань між елементами */
+}
+
+.drawflow-node .title-box textarea[df-name] {
+  font-weight: bold;
+  border: none;
+  background: transparent;
+  outline: none;
+  cursor: default;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  resize:none; /* Забороняємо зміну розміру */
+  width: 100%; /* Заповнює контейнер */
+  min-height: 27px; /* Мінімальна висота */
+  height: 27px; /* Початкова висота */
+  max-height: 200px; /* Максимальна висота */
+  overflow-y: hidden; /* Ховаємо вертикальний скрол */
+  padding: 3px; /* Зменшений внутрішній відступ */
+  font-size: 16px; /* Зменшений розмір шрифту */
+  font-family: Arial, sans-serif; /* Встановлений новий шрифт */
+  text-align: center; /* Центрування тексту */
+  word-break: break-word;
+  white-space: pre-wrap; /* Зберігає пробіли та переносить текст */
+  line-height: 1.1; /* Зменшений міжрядковий інтервал */
+}
+
+/* Стиль блоку "Курс" і "Кредити" */
+.drawflow-node .df-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  font-size: 14px;
+  gap: 6px;
+}
+
+/* Назви полів (label) */
+.drawflow-node .df-field label {
+  flex: 1;
+  text-align: left;
+  font-weight: bold;
+}
+
+/* Текстові поля */
+.drawflow-node .df-field input[type="text"] {
+  flex: 0 0 50px;
+  padding: 2px 5px;
+  text-align: center;
+  border: none;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: transparent;
+  font-size: 14px;
+  outline: none;
+  cursor: default;
+  width: 10px;
+  min-height: 18px;
+  height: 18px;
 }
 
 .drawflow-node .title-box_welcome {
