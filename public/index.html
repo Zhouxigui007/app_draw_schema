@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="uk"> 
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>App_draw_schemas</title>
+</head>
+<body>
+  <script src="node_modules/drawflow/dist/drawflow.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/js/all.min.js" integrity="sha256-KzZiKy0DWYsnwMF+X1DvQngQ2/FxF7MF3Ff72XcpuPs=" crossorigin="anonymous"></script>
+  <link rel="stylesheet" type="text/css" href="drawflow.css" />
+  <link rel="stylesheet" type="text/css" href="styles.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css" integrity="sha256-h20CPZ0QyXlBuAw7A+KluUYx/3pK+c7lYEpqLTlxjYQ=" crossorigin="anonymous" />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@9"></script>
+  <script src="https://unpkg.com/micromodal/dist/micromodal.min.js"></script>
+
+  <header>
+    <h2>Схеми взаємозв'язків дисциплін</h2>
+  </header>
+  
+  <div class="wrapper">
+    <div class="col">
+      <div class="sidebar-info">
+        <div class="sidebar-header" onclick="toggleSidebarInfo()">
+          <span>ℹ️ Інформація (натисніть для розгортання/згортання)</span>
+        </div>
+        <div id="sidebarContent" class="sidebar-content collapsed">
+          <h3>Вітання!!</h3>
+          <p>Цей проект зроблено з використанням бібліотеки <b>Drawflow</b>.</p>
+          <p><b><u>Shortkeys:</u></b></p>
+          <p><b>Delete</b> — для видалення</p>
+          <p><b>ЛКМ</b> — для руху</p>
+          <p><b>ПКМ</b> — для видалення</p>
+          <p><b>Ctrl + Колесо миші</b> — для збільшення</p>
+          <p><b>Кнопка із 🔒</b> — для закріплення елементів</p>
+        </div>
+      </div>
+      <div class="drag-drawflow" draggable="true" ondragstart="drag(event)" data-node="simpleNode">
+        <i class="simpleNode"></i><span>Перетягніть, щоб додати новий блок </span>
+      </div>
+      <div class="wrapper-buttons">
+      <button onclick="saveSchema()" class="btn-save-schema">Додати схему</button>
+      <button onclick="startNewSchema()" class="btn-new-schema">Очистити редактор</button>
+      </div>
+      <div id="schema-buttons"></div>
+    </div>
+    
+    <div class="col-right">
+      <div class="menu">
+        <input type="text" class="title-input" placeholder="Введіть назву схеми">
+      </div>
+      <div id="drawflow" ondrop="drop(event)" ondragover="allowDrop(event)">
+        <div class="btn-export" onclick="exportJSON()">Експорт</div>
+        <input type="file" id="importFile" style="display:none" onchange="importJSON(event)">
+        <div class="btn-import" onclick="document.getElementById('importFile').click()">Імпорт</div>
+        <button class="btn-clear" disabled>Видалити</button>
+        <div class="btn-lock">
+          <i id="lock" class="fas fa-lock" onclick="drawflowEditor.editor_mode='fixed'; changeMode('lock');"></i>
+          <i id="unlock" class="fas fa-lock-open" onclick="drawflowEditor.editor_mode='edit'; changeMode('unlock');" style="display:none;"></i>
+        </div>
+        <div class="bar-zoom">
+          <i class="fas fa-search-minus" onclick="drawflowEditor.zoom_out()"></i>
+          <i class="fas fa-search" onclick="drawflowEditor.zoom_reset()"></i>
+          <i class="fas fa-search-plus" onclick="drawflowEditor.zoom_in()"></i>
+        </div>        
+      </div>
+    </div>
+  </div>
+
+  <svg width="0" height="0">
+    <defs>
+      <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+        refX="10" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="#4ea9ff"/>
+      </marker>
+    </defs>
+  </svg>
+  
+  <script>
+let drawflowEditor = null;
+let currentSchemaId = null;
+
+window.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById("drawflow");
+    drawflowEditor = new Drawflow(container);
+    
+    drawflowEditor.reroute = true;
+    drawflowEditor.reroute_fix_curvature = true;
+    drawflowEditor.force_first_input = false;
+
+    // Власна функція кривизни
+    drawflowEditor.createCurvature = function(start_pos_x, start_pos_y, end_pos_x, end_pos_y, curvature_value, type) {
+        const hx1 = start_pos_x + Math.abs(end_pos_x - start_pos_x) * curvature_value;
+        const hx2 = end_pos_x - Math.abs(end_pos_x - start_pos_x) * curvature_value;
+        return `M ${start_pos_x} ${start_pos_y} C ${hx1} ${start_pos_y}, ${hx2} ${end_pos_y}, ${end_pos_x} ${end_pos_y}`;
+    }
+
+    drawflowEditor.curvature = 0.35;
+
+    drawflowEditor.start();
+
+    drawflowEditor.on('nodeCreated', () => {
+        autoUpdateSchema();
+        initializeAllTextareas(); // <== Додаємо автоініціалізацію textarea після створення вузла
+    });
+
+    // Автоматичне збереження при змінах
+    drawflowEditor.on('nodeCreated', autoUpdateSchema);
+    drawflowEditor.on('nodeRemoved', autoUpdateSchema);
+    drawflowEditor.on('connectionCreated', autoUpdateSchema);
+    drawflowEditor.on('connectionRemoved', autoUpdateSchema);
+    drawflowEditor.on('nodeMoved', autoUpdateSchema);
+
+    // Події для логування (опціонально)
+    drawflowEditor.on('nodeSelected', id => console.log("Node selected", id));
+    drawflowEditor.on('moduleCreated', name => console.log("Module Created", name));
+    drawflowEditor.on('moduleChanged', name => console.log("Module Changed", name));
+    drawflowEditor.on('zoom', zoom => console.log('Zoom level', zoom));
+    drawflowEditor.on('translate', pos => console.log('Translate', pos));
+    drawflowEditor.on('addReroute', id => console.log('Reroute added', id));
+    drawflowEditor.on('removeReroute', id => console.log('Reroute removed', id));
+
+    // Автозбереження при зміні назви
+    document.querySelector('.title-input').addEventListener('input', () => {
+        autoUpdateSchema();
+    });
+
+    // Завантажити список кнопок при запуску
+    loadSchemaButtons();
+
+    const lastSchemaId = localStorage.getItem('lastOpenedSchemaId');
+    if (lastSchemaId) {
+    loadSchemaFromServer(lastSchemaId);
+    }
+
+    const lastId = localStorage.getItem('lastOpenedSchemaId');
+    if (lastId) {
+        loadSchemaFromServer(lastId); // цей виклик вже підсвітить кнопку
+    }
+
+    // Прив’язка кнопки "Clear"
+    const clearBtn = document.querySelector('.btn-clear');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            deleteCurrentSchema();
+        });
+    }
+    document.querySelector('.btn-save-schema').disabled = false;
+    document.querySelector('.btn-new-schema').disabled = true;
+
+    requestAnimationFrame(() => {
+        initializeAllTextareas();
+    });
+});
+
+function updateDeleteButtonState() {
+  const deleteButton = document.querySelector('.btn-clear');
+  const isEditorEmpty = Object.keys(drawflowEditor.export().drawflow.Home.data).length === 0;
+  deleteButton.disabled = isEditorEmpty;
+}
+
+function isEditorEmpty() {
+  const data = drawflowEditor.export();
+  return Object.keys(data.drawflow.Home.data).length === 0;
+}
+
+function newSchema() {
+  drawflowEditor.clear();
+  document.querySelector('.btn-save-schema').disabled = false;
+
+  // Активуємо кнопку "Видалити", навіть якщо схема порожня
+  const deleteButton = document.querySelector('.btn-clear');
+  deleteButton.disabled = false;
+  deleteButton.classList.remove('disabled');
+}
+
+function highlightActiveButton(activeId) {
+    const buttons = document.querySelectorAll('#schema-buttons button');
+    console.log('--- highlighting ---');
+    console.log('activeId:', activeId);
+    buttons.forEach(btn => {
+        if (btn.dataset.id === String(activeId)) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+        console.log('button id:', btn.dataset.id);
+    });
+}
+
+function clearButtonHighlight() {
+    const buttons = document.querySelectorAll('#schema-buttons button');
+    buttons.forEach(btn => btn.classList.remove('active'));
+}
+
+function saveSchemaToServer() {
+    const schemaData = drawflowEditor.export();
+    const title = document.querySelector('.title-input').value;
+
+    fetch('http://localhost:3000/save-schema', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, schemaData })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Схема збережена на сервері:', data);
+    })
+    .catch(error => {
+        console.error('Помилка збереження схеми:', error);
+    });
+}
+
+function loadSchemaFromServer(schemaId) {
+    fetch(`http://localhost:3000/get-schema/${schemaId}`)
+    .then(response => response.json())
+    .then(data => {
+        drawflowEditor.clear();
+        drawflowEditor.import(data.schemaData);
+        document.querySelector('.title-input').value = data.title;
+        document.querySelector('.btn-new-schema').style.display = 'inline-block';
+        document.querySelector('.btn-save-schema').disabled = true;
+        document.querySelector('.btn-new-schema').disabled = false;
+
+        currentSchemaId = schemaId;
+        localStorage.setItem('lastOpenedSchemaId', schemaId);
+        console.log('Схема завантажена:', data.title);
+        highlightActiveButton(schemaId);
+        updateDeleteButtonState();
+        setTimeout(() => {
+            initializeAllTextareas();
+        }, 0);
+    })
+    .catch(error => {
+        console.error('Помилка завантаження схеми:', error);
+    });
+}
+
+async function saveSchema() {
+    const schemaData = drawflowEditor.export();
+    let inputTitle = document.querySelector('.title-input').value.trim();
+
+    if (!currentSchemaId) {
+        let result;
+
+        if (inputTitle) {
+            // Якщо користувач вже щось ввів — підтвердження
+            result = await Swal.fire({
+            title: 'Підтвердіть назву схеми',
+            input: 'text',
+            inputValue: inputTitle,
+            icon: 'question',
+            background: '#f0f8ff',
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Зберегти',
+            cancelButtonText: 'Скасувати',
+            showCancelButton: true,
+            customClass: {
+            title: 'swal2-title-custom',
+            input: 'swal2-input-custom',
+            popup: 'swal2-popup-custom',
+            confirmButton: 'swal2-confirm-custom',
+            cancelButton: 'swal2-cancel-custom'
+          },
+          inputValidator: (value) => {
+          if (!value) return 'Назва не може бути порожньою!';
+          }
+          });
+        } else {
+            // Якщо назва ще не введена — запит
+            result = await Swal.fire({
+            title: 'Введіть назву нової схеми',
+            input: 'text',
+            icon: 'info',
+            background: '#f0f8ff',
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Зберегти',
+            cancelButtonText: 'Скасувати',
+            showCancelButton: true,
+            customClass: {
+            title: 'swal2-title-custom',
+            input: 'swal2-input-custom',
+            popup: 'swal2-popup-custom',
+            confirmButton: 'swal2-confirm-custom',
+            cancelButton: 'swal2-cancel-custom'
+          },
+          inputValidator: (value) => {
+          if (!value) return 'Назва не може бути порожньою!';
+          }
+          });
+        }
+        if (result.isConfirmed) {
+            const title = result.value;
+
+            fetch('http://localhost:3000/save-schema', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, schemaData })
+            })
+            .then(res => res.json())
+            .then(data => {
+                currentSchemaId = data.id;
+                document.querySelector('.title-input').value = title;
+                addSchemaButton(data.id, title);
+                document.querySelector('.btn-new-schema').disabled = false;
+                document.querySelector('.btn-save-schema').disabled = true;
+                console.log('Нова схема збережена');
+                updateDeleteButtonState();
+            })
+            .catch(err => console.error('Помилка збереження схеми:', err));
+        }
+
+    } else {
+        // Оновлення існуючої схеми
+        const title = inputTitle;
+
+        fetch(`http://localhost:3000/update-schema/${currentSchemaId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, schemaData })
+        })
+        .then(res => res.json())
+        .then(() => {
+            const btn = document.querySelector(`button[data-id='${currentSchemaId}']`);
+            if (btn) btn.textContent = title;
+            console.log('Схема оновлена');
+        })
+        .catch(err => console.error('Помилка оновлення схеми:', err));
+    }
+}
+
+async function startNewSchema() {
+  const result = await Swal.fire({
+    title: 'Очистити редактор?',
+    text: 'Поточна схема буде збережена, але редактор буде очищено.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Так, очистити',
+    cancelButtonText: 'Скасувати',
+    background: '#fffaf0',
+    confirmButtonColor: '#3085d6',
+    cancelButtonColor: '#d33',
+    customClass: {
+      title: 'swal2-title-custom',
+      popup: 'swal2-popup-custom',
+      confirmButton: 'swal2-confirm-custom',
+      cancelButton: 'swal2-cancel-custom'
+    }
+  });
+
+  if (result.isConfirmed) {
+    drawflowEditor.clear();
+    document.querySelector('.title-input').value = '';
+    currentSchemaId = null;
+    localStorage.removeItem('lastOpenedSchemaId');
+    document.querySelector('.btn-save-schema').disabled = false;
+    document.querySelector('.btn-new-schema').disabled = true;
+    updateDeleteButtonState();
+    clearButtonHighlight();
+  }
+}
+
+function autoUpdateSchema() {
+    if (!currentSchemaId) return;
+
+    const updatedData = drawflowEditor.export();
+    const newTitle = document.querySelector('.title-input').value;
+
+    fetch(`http://localhost:3000/update-schema/${currentSchemaId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle, schemaData: updatedData })
+    }).then(res => res.json())
+    .then(data => {
+        console.log('Схема оновлена автоматично');
+        const btn = document.querySelector(`button[data-id='${currentSchemaId}']`);
+        if (btn) btn.textContent = newTitle;
+    })
+    .catch(err => console.error('Помилка оновлення схеми:', err));
+}
+
+function addSchemaButton(id, title) {
+    const container = document.getElementById('schema-buttons');
+    const btn = document.createElement('button');
+    btn.textContent = title;
+    btn.dataset.id = id;
+    btn.addEventListener('click', () => {
+        loadSchemaFromServer(id);
+    });
+    container.appendChild(btn);
+}
+
+function loadSchemaButtons() {
+    fetch('http://localhost:3000/get-all-schemas')
+    .then(res => res.json())
+    .then(schemas => {
+        const container = document.getElementById('schema-buttons');
+        container.innerHTML = '';
+        schemas.forEach(schema => {
+            addSchemaButton(schema.id, schema.title);
+        });
+    })
+    .catch(err => console.error('Помилка при завантаженні кнопок схем:', err));
+}
+
+async function deleteCurrentSchema() {
+  if (!currentSchemaId) return;
+
+  const result = await Swal.fire({
+    title: 'Видалити схему?',
+    text: 'Цю дію не можна скасувати!',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Так, видалити',
+    cancelButtonText: 'Скасувати',
+    background: '#fffaf0',
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
+    customClass: {
+      title: 'swal2-title-custom',
+      popup: 'swal2-popup-custom',
+      confirmButton: 'swal2-confirm-custom',
+      cancelButton: 'swal2-cancel-custom'
+    }
+  });
+
+  if (result.isConfirmed) {
+    fetch(`http://localhost:3000/delete-schema/${currentSchemaId}`, {
+      method: 'DELETE'
+    })
+      .then(res => res.json())
+      .then(() => {
+        drawflowEditor.clear();
+        document.querySelector('.title-input').value = '';
+        const btn = document.querySelector(`button[data-id='${currentSchemaId}']`);
+        if (btn) btn.remove();
+        currentSchemaId = null;
+        updateDeleteButtonState();
+        document.querySelector('.btn-new-schema').disabled = true;
+        document.querySelector('.btn-save-schema').disabled = false;
+        console.log('Схема видалена успішно');
+      })
+      .catch(err => {
+        console.error('Помилка видалення схеми:', err);
+      });
+  }
+}
+
+document.querySelector('.btn-clear').addEventListener('click', deleteCurrentSchema);
+
+function toggleSidebarInfo() {
+  const content = document.getElementById('sidebarContent');
+  content.classList.toggle('expanded');
+}
+    /* DRAG EVENT */
+
+    /* Mouse and Touch Actions */
+
+    var elements = document.getElementsByClassName('drag-drawflow');
+    for (var i = 0; i < elements.length; i++) {
+      elements[i].addEventListener('touchend', drop, false);
+      elements[i].addEventListener('touchmove', positionMobile, false);
+      elements[i].addEventListener('touchstart', drag, false );
+    }
+
+    var mobile_item_selec = '';
+    var mobile_last_move = null;
+   function positionMobile(ev) {
+     mobile_last_move = ev;
+   }
+
+   function allowDrop(ev) {
+      ev.preventDefault();
+    }
+
+    function drag(ev) {
+      if (ev.type === "touchstart") {
+        mobile_item_selec = ev.target.closest(".drag-drawflow").getAttribute('data-node');
+      } else {
+      ev.dataTransfer.setData("node", ev.target.getAttribute('data-node'));
+      }
+    }
+
+    function drop(ev) {
+      if (ev.type === "touchend") {
+        var parentdrawflow = document.elementFromPoint( mobile_last_move.touches[0].clientX, mobile_last_move.touches[0].clientY).closest("#drawflow");
+        if(parentdrawflow != null) {
+          addNodeToDrawFlow(mobile_item_selec, mobile_last_move.touches[0].clientX, mobile_last_move.touches[0].clientY);
+        }
+        mobile_item_selec = '';
+      } else {
+        ev.preventDefault();
+        var data = ev.dataTransfer.getData("node");
+        addNodeToDrawFlow(data, ev.clientX, ev.clientY);
+      }
+    }
+
+    function autoResizeTextarea(textarea) {
+    textarea.style.height = "auto"; // Спочатку скидаємо висоту
+    textarea.style.height = textarea.scrollHeight + "px"; // Встановлюємо нову висоту відповідно до контенту
+}
+
+// Функція для додавання вузла
+function addNodeToDrawFlow(name, pos_x, pos_y) {
+    if (drawflowEditor.editor_mode === 'fixed') {
+        return false;
+    }
+
+    pos_x = pos_x * (drawflowEditor.precanvas.clientWidth / (drawflowEditor.precanvas.clientWidth * drawflowEditor.zoom)) - (drawflowEditor.precanvas.getBoundingClientRect().x * (drawflowEditor.precanvas.clientWidth / (drawflowEditor.precanvas.clientWidth * drawflowEditor.zoom)));
+    pos_y = pos_y * (drawflowEditor.precanvas.clientHeight / (drawflowEditor.precanvas.clientHeight * drawflowEditor.zoom)) - (drawflowEditor.precanvas.getBoundingClientRect().y * (drawflowEditor.precanvas.clientHeight / (drawflowEditor.precanvas.clientHeight * drawflowEditor.zoom)));
+
+    let nodeId = null;
+
+    switch (name) {
+        case 'simpleNode':
+            nodeId = drawflowEditor.addNode(
+                'simple',
+                1,
+                1,
+                pos_x,
+                pos_y,
+                'simple',
+                { "text": "Введіть назву дисципліни" },
+                `<div>
+                    <div class="title-box">
+                        <textarea df-name placeholder="Введіть назву дисципліни"></textarea>
+                    </div>
+                </div>`
+            );
+
+            // Затримка, щоб textarea з'явилася в DOM
+            requestAnimationFrame(() => {
+                const textarea = document.querySelector(`#node-${nodeId} textarea[df-name]`);
+                if (textarea) {
+                    textarea.style.overflow = 'hidden';
+                    textarea.style.resize = 'none';
+                    textarea.rows = 1;
+
+                    // Одразу встановлюємо висоту
+                    autoResizeTextarea(textarea);
+
+                    // Під час введення тексту автоматичний ресайз
+                    textarea.addEventListener('input', function () {
+                        setTimeout(() => autoResizeTextarea(this), 0);
+                    });
+                }
+            });
+
+            break;
+
+        default:
+            console.warn("Невідомий тип вузла:", name);
+            return false;
+    }
+
+    autoUpdateSchema();
+}
+
+// Зміна розміру textarea після завантаження
+function initializeAllTextareas() {
+    const textareas = document.querySelectorAll("textarea[df-name]");
+    textareas.forEach(textarea => {
+        textarea.style.overflow = 'hidden';
+        textarea.style.resize = 'none';
+        textarea.rows = 1;
+
+        requestAnimationFrame(() => {
+            autoResizeTextarea(textarea);
+        });
+
+        textarea.addEventListener('input', function () {
+            setTimeout(() => autoResizeTextarea(this), 0);
+        });
+    });
+}
+    
+var transform = '';
+  function showpopup(e) {
+    e.target.closest(".drawflow-node").style.zIndex = "9999";
+    e.target.children[0].style.display = "block";
+    //document.getElementById("modalfix").style.display = "block";
+
+    //e.target.children[0].style.transform = 'translate('+translate.x+'px, '+translate.y+'px)';
+    transform = drawflowEditor.precanvas.style.transform;
+    drawflowEditor.precanvas.style.transform = '';
+    drawflowEditor.precanvas.style.left = drawflowEditor.canvas_x +'px';
+    drawflowEditor.precanvas.style.top = drawflowEditor.canvas_y +'px';
+    console.log(transform);
+
+    //e.target.children[0].style.top  =  -editor.canvas_y - editor.container.offsetTop +'px';
+    //e.target.children[0].style.left  =  -editor.canvas_x  - editor.container.offsetLeft +'px';
+    drawflowEditor.editor_mode = "fixed";
+
+  }
+
+   function closemodal(e) {
+     e.target.closest(".drawflow-node").style.zIndex = "2";
+     e.target.parentElement.parentElement.style.display  ="none";
+     //document.getElementById("modalfix").style.display = "none";
+     drawflowEditor.precanvas.style.transform = transform;
+     drawflowEditor.precanvas.style.left = '0px';
+     drawflowEditor.precanvas.style.top = '0px';
+     drawflowEditor.editor_mode = "edit";
+   }
+
+    function changeMode(option) {
+
+    //console.log(lock.id);
+      if(option == 'lock') {
+        lock.style.display = 'none';
+        unlock.style.display = 'block';
+      } else {
+        lock.style.display = 'block';
+        unlock.style.display = 'none';
+      }
+    }
+
+function exportJSON() {
+    // Спочатку зберігаємо актуальні назви вузлів у localStorage
+    localStorage.setItem("nodeTitles", JSON.stringify(getCurrentNodeTitles()));
+
+    let exportData = editor.export();
+    exportData.schemaTitle = localStorage.getItem("schemaTitle") || "Без назви";
+
+    const dataStr = JSON.stringify(exportData, null, 4);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "schema.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+function importJSON(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        try {
+            const data = JSON.parse(e.target.result);
+
+            // Перевіряємо, чи об'єкт містить потрібні поля
+            if (!data.drawflow || !data.drawflow.Home || !data.drawflow.Home.data) {
+                throw new Error("Некоректний формат файлу!");
+            }
+
+            editor.import(data);
+
+            // Відновлюємо заголовок схеми
+            if (data.schemaTitle) {
+                localStorage.setItem("schemaTitle", data.schemaTitle);
+                document.querySelector(".title-input").value = data.schemaTitle;
+            }
+
+            // Відновлюємо збережені назви вузлів
+            let titles = {};
+            for (let key in data.drawflow.Home.data) {
+                if (data.drawflow.Home.data[key]?.data?.text) {
+                    titles[`node-${key}`] = data.drawflow.Home.data[key].data.text;
+                }
+            }
+            localStorage.setItem("nodeTitles", JSON.stringify(titles));
+
+            setTimeout(() => {
+                loadNodeTitles();             // Встановлює значення у textarea
+                initializeAllTextareas();    // Додає input-слухачі та авто-розмір
+                saveDiagram();               // Зберігаємо оновлену схему
+            }, 200);
+
+        } catch (error) {
+            console.error("Помилка імпорту JSON:", error);
+            alert("Файл не може бути імпортований! Перевірте формат.");
+        }
+    };
+    reader.readAsText(file);
+}
+</script>
+</body>
+</html>
