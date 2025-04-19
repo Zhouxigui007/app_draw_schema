@@ -101,8 +101,19 @@ header a {
 }
 
 .sidebar-content.expanded {
-  max-height: 500px; /* Встановлюємо достатньо велике значення */
+  max-height: 2000px; /* Встановлюємо достатньо велике значення */
   padding: 10px;
+}
+
+.highlighted-course {
+  position: relative;
+  z-index: 1;
+  border: 3px solid #ff9800 !important;
+  border-radius: 10px;
+  -webkit-box-shadow: 0 4px 25px 4px #ff9800 !important;
+  box-shadow: 0 2px 15px 2px #ff9800 !important;
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+  background-color: rgba(255, 152, 0, 0.05);
 }
 
 .menu {
@@ -136,6 +147,31 @@ cursor: pointer;
 
 .menu ul li.selected {
   font-weight: bold;
+}
+
+.btn-course {
+  font-size: 16px;
+  margin-top: 5px;
+  padding: 8px;
+  background-color: orange;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100px;
+  border: 1px solid orangered;
+  margin-bottom: 3px;
+  font-weight: bold;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.btn-course:hover {
+  background-color: rgb(255, 140, 0);
+  border-color: rgb(255, 30, 0);
+}
+
+.active-btn {
+  background-color: rgb(255, 81, 0) !important;
+  border-color: red !important;
 }
 
 .btn-export {
