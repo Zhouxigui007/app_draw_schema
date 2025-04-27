@@ -196,12 +196,19 @@ cursor: pointer;
   border-color: #094277;
 }
 
+.btn-export:disabled {
+  background-color: #cccccc;
+  border-color: #353535;
+  color: #666666;
+  cursor: not-allowed;
+}
+
 .btn-import {
   font-size: 16px;
   float: right;
   position: absolute;
   top: 10px;
-  right: 100px;
+  right: 105px;
   color: white;
   font-weight: bold;
   border: 1px solid #047c00;
@@ -218,12 +225,19 @@ cursor: pointer;
   border-color: #036700;
 }
 
+.btn-import:disabled {
+  background-color: #cccccc;
+  border-color: #353535;
+  color: #666666;
+  cursor: not-allowed;
+}
+
 .btn-clear {
   font-size: 16px;
   float: right;
   position: absolute;
   top: 10px;
-  right: 180px;
+  right: 192px;
   color: white;
   font-weight: bold;
   border: 1px solid #96015b;
@@ -245,7 +259,6 @@ cursor: pointer;
   border-color: #353535;
   color: #666666;
   cursor: not-allowed;
-  opacity: 0.7;
 }
 
 .btn-new-schema 
@@ -275,7 +288,6 @@ cursor: pointer;
   border-color: #353535;
   color: #666666;
   cursor: not-allowed;
-  opacity: 0.7;
 }
 
 .btn-save-schema{
@@ -307,7 +319,6 @@ cursor: pointer;
   border-color: #353535;
   color: #666666;
   cursor: not-allowed;
-  opacity: 0.7;
 }
 
 .swal2-title-custom {
@@ -344,6 +355,14 @@ cursor: pointer;
 
 .swal-wide{
     width:80% !important;
+}
+
+.schema-list-text{
+  font-size: 20px;
+  text-align: center;
+  text-decoration: underline;
+  margin-bottom: 10px;
+  margin-top: 10px;
 }
 
 #schema-buttons {
