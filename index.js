@@ -1,10 +1,11 @@
+require('dotenv').config();
 const express = require('express');
 const mysql = require('mysql2');
 const bodyParser = require('body-parser');
 const path = require('path');
 
 const app = express(); 
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 app.use('/node_modules', express.static(path.join(__dirname, 'node_modules')));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -15,10 +16,10 @@ app.get('/', (req, res) => {
 
 // Підключення до MySQL
 const db = mysql.createConnection({
-    host: '127.0.0.1',
-    user: 'root',
-    password: '1398urty37d1F',
-    database: 'drawflow_db'
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME
 });
 
 db.connect((err) => {
