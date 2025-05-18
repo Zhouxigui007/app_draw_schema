@@ -59,22 +59,6 @@ app.put('/update-schema/:id', (req, res) => {
     });
 });
 
-// Завантаження схеми
-app.get('/load-schema/:id', (req, res) => {
-    const schemaId = req.params.id;
-    const query = 'SELECT schema_data FROM schemas_drawflow WHERE id = ?';
-    db.query(query, [schemaId], (err, result) => {
-        if (err) {
-            console.error('Помилка при завантаженні:', err);
-            return res.status(500).json({ error: 'Не вдалося завантажити схему' });
-        }
-        if (result.length === 0) {
-            return res.status(404).json({ error: 'Схема не знайдена' });
-        }
-        res.json(result[0].schema_data);
-    });
-});
-
 // Отримати схему за id
 app.get('/get-schema/:id', (req, res) => {
     const id = req.params.id;
