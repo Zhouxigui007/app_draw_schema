@@ -2300,7 +2300,19 @@ function importJSONFromFile(event) {
 
         } catch (error) {
             console.error("Помилка імпорту JSON:", error);
-            alert("Файл не може бути імпортований! Перевірте формат.");
+                Swal.fire({
+                title: 'Помилка імпорту',
+                text: 'Файл не може бути імпортований! Перевірте формат.',
+                icon: 'error',
+                confirmButtonText: 'Ок',
+                background: '#fff8f0',
+                confirmButtonColor: '#d33',
+                customClass: {
+                    title: 'swal2-title-custom',
+                    popup: 'swal2-popup-custom',
+                    confirmButton: 'swal2-confirm-custom'
+                }
+            });
         }
     };
     reader.readAsText(file);
