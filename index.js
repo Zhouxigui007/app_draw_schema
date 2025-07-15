@@ -14,7 +14,7 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Підключення до MySQL
+// Connecting to MySQL
 const db = mysql.createConnection({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -24,58 +24,58 @@ const db = mysql.createConnection({
 
 db.connect((err) => {
     if (err) {
-        console.error('Помилка підключення до бази даних:', err);
+        console.error('Error connecting to the database:', err);
         return;
     }
-    console.log('Підключено до бази даних MySQL');
+    console.log('Connected to MySQL database');
 });
 
 app.use(bodyParser.json());
 
-// Збереження нової схеми
+// Saving a new scheme
 app.post('/save-schema', (req, res) => {
     const { title, schemaData } = req.body;
     const query = 'INSERT INTO schemas_drawflow (title, schema_data) VALUES (?, ?)';
     db.query(query, [title, JSON.stringify(schemaData)], (err, result) => {
         if (err) {
-            console.error('Помилка при збереженні:', err);
-            return res.status(500).json({ error: 'Не вдалося зберегти схему' });
+            console.error('Error while saving:', err);
+            return res.status(500).json({ error: 'Failed to save the schema' });
         }
-        res.json({ message: 'Схема успішно збережена', id: result.insertId });
+        res.json({ message: 'Schema successfully saved', id: result.insertId });
     });
 });
 
-// Оновлення схеми
+// Updating a schema
 app.put('/update-schema/:id', (req, res) => {
     const schemaId = req.params.id;
     const { title, schemaData } = req.body;
     const query = 'UPDATE schemas_drawflow SET title = ?, schema_data = ? WHERE id = ?';
     db.query(query, [title, JSON.stringify(schemaData), schemaId], (err, result) => {
         if (err) {
-            console.error('Помилка при оновленні:', err);
-            return res.status(500).json({ error: 'Не вдалося оновити схему' });
+            console.error('Error while updating:', err);
+            return res.status(500).json({ error: 'Failed to update the schema' });
         }
-        res.json({ message: 'Схема оновлена' });
+        res.json({ message: 'Schema updated' });
     });
 });
 
-// Отримати схему за id
+// Get a schema by id
 app.get('/get-schema/:id', (req, res) => {
     const id = req.params.id;
     const query = 'SELECT * FROM schemas_drawflow WHERE id = ?';
     db.query(query, [id], (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
-        if (results.length === 0) return res.status(404).json({ error: 'Схема не знайдена' });
+        if (results.length === 0) return res.status(404).json({ error: 'Schema not found' });
 
         let schemaData = results[0].schema_data;
 
-        // Якщо schemaData є рядком, парсимо його, інакше передаємо як є
+        // If schemaData is a string, parse it; otherwise, pass it as is
         try {
             if (typeof schemaData === 'string') {
                 schemaData = JSON.parse(schemaData);
             }
         } catch (parseErr) {
-            return res.status(500).json({ error: 'Помилка парсингу JSON у schema_data' });
+            return res.status(500).json({ error: 'Error parsing JSON in schema_data' });
         }
 
         res.json({
@@ -86,18 +86,18 @@ app.get('/get-schema/:id', (req, res) => {
     });
 });
 
-// Отримати всі схеми
+// Get all schemas
 app.get('/get-all-schemas', (req, res) => {
     db.query("SELECT * FROM schemas_drawflow", (err, results) => {
         if (err) {
-            console.error("Помилка при запиті до MySQL:", err);
+            console.error("Error querying MySQL:", err);
             return res.status(500).json({ error: err.message });
         }
         res.json(results);
     });
 });
 
-// Видалення схеми
+// Deleting a schema
 app.delete('/delete-schema/:id', (req, res) => {
     const id = req.params.id;
     db.query("DELETE FROM schemas_drawflow WHERE id = ?", [id], (err, result) => {
@@ -107,5 +107,5 @@ app.delete('/delete-schema/:id', (req, res) => {
 });
 
 app.listen(port, () => {
-    console.log(`Сервер працює на http://localhost:${port}`);
+    console.log(`Server is running at http://localhost:${port}`);
 });
